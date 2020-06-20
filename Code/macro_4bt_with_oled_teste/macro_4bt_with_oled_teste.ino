@@ -55,7 +55,7 @@ void loop()
   if (digitalRead(buttonPin1) == 0)  // if the button goes low
   {
     Keyboard.press(KEY_LEFT_CTRL);
-  Keyboard.press('z'); //equivalente ao atalho control + n
+  Keyboard.press('z'); 
   delay(100);
   Keyboard.releaseAll();
   display.clearDisplay(); 
@@ -70,9 +70,9 @@ void loop()
   if (digitalRead(buttonPin2) == 0)  // if the button goes low
   {
     Keyboard.press(KEY_LEFT_CTRL);
-  Keyboard.press('c'); //equivalente ao atalho control + n
+  Keyboard.press('c'); 
   delay(100);
-  Keyboard.releaseAll();    // send a 'z' to the computer via Keyboard HID
+  Keyboard.releaseAll();    // send 
   display.clearDisplay();
     display.setTextSize(1);
   display.setTextColor(WHITE);
@@ -85,9 +85,9 @@ void loop()
   if (digitalRead(buttonPin3) == 0)  // if the button goes low
   {
     Keyboard.press(KEY_LEFT_CTRL);
-  Keyboard.press('v'); //equivalente ao atalho control + n
+  Keyboard.press('v'); 
   delay(100);
-  Keyboard.releaseAll();    // send a 'z' to the computer via Keyboard HID
+  Keyboard.releaseAll();    // send 
   display.clearDisplay();
     display.setTextSize(1);
   display.setTextColor(WHITE);
@@ -100,9 +100,9 @@ void loop()
   if (digitalRead(buttonPin4) == 0)  // if the button goes low
   {
     Keyboard.press(KEY_LEFT_CTRL);
-  Keyboard.press('8'); //equivalente ao atalho control + n
+  Keyboard.press('8'); 
   delay(100);
-  Keyboard.releaseAll();    // send a 'z' to the computer via Keyboard HID
+  Keyboard.releaseAll();    // send 
   display.clearDisplay();
     display.setTextSize(1);
   display.setTextColor(WHITE);
