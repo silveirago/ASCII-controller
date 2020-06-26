@@ -167,7 +167,7 @@ int potMidiCState[N_POTS] = {0}; // Current state of the midi value
 int potMidiPState[N_POTS] = {0}; // Previous state of the midi value
 
 const int TIMEOUT = 300; //* Amount of time the potentiometer will be read after it exceeds the varThreshold
-const int varThreshold = 100; //* Threshold for the potentiometer signal variation
+const int varThreshold = 10; //* Threshold for the potentiometer signal variation
 boolean potMoving = true; // If the potentiometer is moving
 unsigned long PTime[N_POTS] = {0}; // Previously stored time
 unsigned long timer[N_POTS] = {0}; // Stores the time that has elapsed since the timer was reset
@@ -182,7 +182,7 @@ const int N_ENCODERS = 1; //* number of encoders
 const int N_ENCODER_CHANNELS = 1; //* number of encoderChannels
 const int N_ENCODER_PINS = N_ENCODERS * 2; //number of pins used by the encoders
 
-Encoder encoder[N_ENCODERS] = {{8, 9}}; // the two pins of each encoder (backwards) -  Use pins with Interrupts!
+Encoder encoder[N_ENCODERS] = {{9, 8}}; // the two pins of each encoder (backwards) -  Use pins with Interrupts!
 
 int encoderMinVal = 0; //* encoder minimum value
 int encoderMaxVal = 127; //* encoder maximum valuevar
@@ -199,8 +199,10 @@ int encoderChannel = 0;
 int lastEncoderChannel = 0;
 
 // For mouse pos
-int mouseInc = 5;
+int mouseInc = 1;
 int mousePos = 0;
+int mouseCSensitivity = 1;
+int mousePSensitivity = 1;
 
 #endif
 /////////////////////////////////////////////
@@ -276,13 +278,18 @@ pinMode(BUTTON_ARDUINO_PIN[pin13index], INPUT);
   }
 
 #endif
-/////////////////////////////////////////////
 
+
+  /////////////////////////////////////////////
+  // MOUSE
+  Mouse.begin();
+
+  /////////////////////////////////////////////
 }
 
 void loop() {
 
-  //cpu.run(); // for threads
+  cpu.run(); // for threads
   buttons();
 
 #ifdef USING_ENCODER
@@ -494,6 +501,7 @@ void buttons() {
     // reads the pins from arduino
     for (int i = 0; i < N_POTS_ARDUINO; i++) {
       potCState[i] = analogRead(POT_ARDUINO_PIN[i]);
+      mouseCSensitivity = map(potCState[i], 0, 1023, 1, 10);
     }
 
 #ifdef USING_MUX
@@ -503,17 +511,13 @@ int nPotsPerMuxSum = N_POTS_ARDUINO; //offsets the buttonCState at every mux rea
     // reads the pins from every mux
     for (int j = 0; j < N_MUX; j++) {
       for (int i = 0; i < N_POTS_PER_MUX[j]; i++) {
-        potCState[i + nPotsPerMuxSum] = mux[j].readChannel(POT_MUX_PIN[j][i]);
+        potCState[i + nPotsPerMuxSum] = mux[j].readChannel(POT_MUX_PIN[j][i]);        
       }
       nPotsPerMuxSum += N_POTS_PER_MUX[j];
     }
 #endif
 
-    //Debug only
-    //    for (int i = 0; i < nPots; i++) {
-    //      Serial.print(potCState[i]); Serial.print(" ");
-    //    }
-    //    Serial.println();
+
 
     for (int i = 0; i < N_POTS; i++) { // Loops through all the potentiometers
 
@@ -535,56 +539,14 @@ int nPotsPerMuxSum = N_POTS_ARDUINO; //offsets the buttonCState at every mux rea
       }
 
       if (potMoving == true) { // If the potentiometer is still moving, send the change control
-        if (potMidiPState[i] != potMidiCState[i]) {
 
-          // Sends the MIDI CC accordingly to the chosen board
-#ifdef ATMEGA328
-// use if using with ATmega328 (uno, mega, nano...)
+        if (mouseCSensitivity != mousePSensitivity) {
 
-#ifdef USING_CUSTOM_CC_N
-MIDI.sendControlChange(POT_CC_N[i], potMidiCState[i], MIDI_CH); // CC number, CC value, midi channel - custom cc
-#else
-MIDI.sendControlChange(CC + i, potMidiCState[i], MIDI_CH); // CC number, CC value, midi channel
-#endif
+          // mouseInc sensitivity          
+          Serial.print("Mouse sensitivity: ");
+          Serial.println(mouseCSensitivity);
 
-#elif ATMEGA32U4
-//use if using with ATmega32U4 (micro, pro micro, leonardo...)
-
-#ifdef USING_CUSTOM_CC_N
-controlChange(MIDI_CH, POT_CC_N[i], potMidiCState[i]); //  (channel, CC number,  CC value)
-MidiUSB.flush();
-#else
-controlChange(MIDI_CH, CC + i, potMidiCState[i]); //  (channel, CC number,  CC value)
-MidiUSB.flush();
-#endif
-
-#elif TEENSY
-//do usbMIDI.sendControlChange if using with Teensy
-
-#ifdef USING_CUSTOM_CC_N
-usbMIDI.sendControlChange(POT_CC_N[i], potMidiCState[i], MIDI_CH); // CC number, CC value, midi channel
-#else
-usbMIDI.sendControlChange(CC + i, potMidiCState[i], MIDI_CH); // CC number, CC value, midi channel
-#endif
-
-#elif DEBUG
-Serial.print("Pot: ");
-Serial.print(i);
-Serial.print("  |  ch: ");
-Serial.print(MIDI_CH);
-Serial.print("  |  cc: ");
-#ifdef USING_CUSTOM_NN
-Serial.print(POT_CC_N[i]);
-#else
-Serial.print(CC + i);
-#endif
-Serial.print("  |  value: ");
-Serial.println(potMidiCState[i]);
-#endif
-
-
-          potPState[i] = potCState[i]; // Stores the current reading of the potentiometer to compare with the next
-          potMidiPState[i] = potMidiCState[i];
+          mousePSensitivity = mouseCSensitivity;
         }
       }
     }
@@ -616,8 +578,10 @@ encoderValue[encoderChannel][i] = 0;
 
         if (encoderValue[encoderChannel][i] > lastEncoderValue[encoderChannel][i]) {
           mousePos = mouseInc;
+          mousePos *= mouseCSensitivity;
         } else {
           mousePos = - mouseInc;
+          mousePos *= mouseCSensitivity;
         }
 #endif
 
