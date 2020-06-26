@@ -21,11 +21,12 @@
 // Define your board, choose:
 // "ATMEGA328" if using ATmega328 - Uno, Mega, Nano...
 // "ATMEGA32U4" if using with ATmega32U4 - Micro, Pro Micro, Leonardo...
+// "ATMEGA32U4_HID" if using with ATmega32U4 - Micro, Pro Micro, Leonardo...
 // "TEENSY" if using a Teensy board
 // "DEBUG" if you just want to debug the code in the serial monitor
 // you don't need to comment or uncomment any MIDI library below after you define your board
 
-#define DEBUG 1//* put here the uC you are using, like in the lines above followed by "1", like "ATMEGA328 1", "DEBUG 1", etc.
+#define ATMEGA32U4_HID 1 //* put here the uC you are using, like in the lines above followed by "1", like "ATMEGA328 1", "DEBUG 1", etc.
 
 /////////////////////////////////////////////
 // Are you using a multiplexer?
@@ -47,6 +48,11 @@
 // if using with ATmega32U4 - Micro, Pro Micro, Leonardo...
 #elif ATMEGA32U4
 #include "MIDIUSB.h"
+
+// Mouse and keys
+#elif ATMEGA32U4_HID
+#include "Keyboard.h"
+#include "Mouse.h"
 
 #endif
 // ---- //
@@ -96,7 +102,7 @@ Multiplexer4067 mux[N_MUX] = {
 // BUTTONS
 const int N_BUTTONS = 3 + 0 + 0; //*  total numbers of buttons. Number of buttons in the Arduino + number of buttons on multiplexer 1 + number of buttons on multiplexer 2...
 const int N_BUTTONS_ARDUINO = 3; //* number of buttons connected straight to the Arduino (in order)
-const int BUTTON_ARDUINO_PIN[N_BUTTONS] = {4,6,7}; //* pins of each button connected straight to the Arduino
+const int BUTTON_ARDUINO_PIN[N_BUTTONS] = {4, 6, 7}; //* pins of each button connected straight to the Arduino
 
 //#define USING_CUSTOM_NN 1 //* comment if not using CUSTOM NOTE NUMBERS (scales), uncomment if using it.
 #ifdef USING_CUSTOM_NN
@@ -136,7 +142,7 @@ byte velocity[N_BUTTONS] = {127};
 /////////////////////////////////////////////
 // POTENTIOMETERS
 const int N_POTS = 1 + 0 + 0; //* total numbers of pots (slide & rotary). Number of pots in the Arduino + number of pots on multiplexer 1 + number of pots on multiplexer 2...
-const int N_POTS_ARDUINO = 2; //* number of pots connected straight to the Arduino
+const int N_POTS_ARDUINO = 1; //* number of pots connected straight to the Arduino
 const int POT_ARDUINO_PIN[N_POTS_ARDUINO] = {A0}; //* pins of each pot connected straight to the Arduino
 
 //#define USING_CUSTOM_CC_N 1 //* comment if not using CUSTOM CC NUMBERS, uncomment if using it.
@@ -161,7 +167,7 @@ int potMidiCState[N_POTS] = {0}; // Current state of the midi value
 int potMidiPState[N_POTS] = {0}; // Previous state of the midi value
 
 const int TIMEOUT = 300; //* Amount of time the potentiometer will be read after it exceeds the varThreshold
-const int varThreshold = 60; //* Threshold for the potentiometer signal variation
+const int varThreshold = 100; //* Threshold for the potentiometer signal variation
 boolean potMoving = true; // If the potentiometer is moving
 unsigned long PTime[N_POTS] = {0}; // Previously stored time
 unsigned long timer[N_POTS] = {0}; // Stores the time that has elapsed since the timer was reset
@@ -171,11 +177,12 @@ unsigned long timer[N_POTS] = {0}; // Stores the time that has elapsed since the
 #ifdef USING_ENCODER
 // You can add as many encoders you want separated in many encoderChannels you want
 //#define TRAKTOR 1 // uncomment if using with traktor, comment if not
+
 const int N_ENCODERS = 1; //* number of encoders
 const int N_ENCODER_CHANNELS = 1; //* number of encoderChannels
 const int N_ENCODER_PINS = N_ENCODERS * 2; //number of pins used by the encoders
 
-Encoder encoder[N_ENCODERS] = {{8,9}}; // the two pins of each encoder (backwards) -  Use pins with Interrupts!
+Encoder encoder[N_ENCODERS] = {{8, 9}}; // the two pins of each encoder (backwards) -  Use pins with Interrupts!
 
 int encoderMinVal = 0; //* encoder minimum value
 int encoderMaxVal = 127; //* encoder maximum valuevar
@@ -190,6 +197,10 @@ int encoderValue[N_ENCODER_CHANNELS][N_ENCODERS] = {127};
 // for the encoder Channels - Used for different banks
 int encoderChannel = 0;
 int lastEncoderChannel = 0;
+
+// For mouse pos
+int mouseInc = 5;
+int mousePos = 0;
 
 #endif
 /////////////////////////////////////////////
@@ -271,7 +282,7 @@ pinMode(BUTTON_ARDUINO_PIN[pin13index], INPUT);
 
 void loop() {
 
-  cpu.run(); // for threads
+  //cpu.run(); // for threads
   buttons();
 
 #ifdef USING_ENCODER
@@ -601,6 +612,15 @@ encoderValue[encoderChannel][i] = 0;
 }
 #endif
 
+#ifdef ATMEGA32U4_HID // to use with Mouse
+
+        if (encoderValue[encoderChannel][i] > lastEncoderValue[encoderChannel][i]) {
+          mousePos = mouseInc;
+        } else {
+          mousePos = - mouseInc;
+        }
+#endif
+
         clipEncoderValue(i, encoderMinVal, encoderMaxVal); // checks if it's greater than the max value or less than the min value
 
         // Sends the MIDI CC accordingly to the chosen board
@@ -617,10 +637,18 @@ MidiUSB.flush();
 // if using with Teensy
 usbMIDI.sendControlChange(i, encoderValue[encoderChannel][i], encoderChannel);
 
+#elif ATMEGA32U4_HID
+
+        Mouse.move(0, mousePos); // moves mouse cursor
+
+        Serial.print("Encoder "); Serial.print(i); Serial.print(": ");
+        Serial.println(mousePos);
+
 #elif DEBUG
-Serial.print("encoder channel: "); Serial.print(encoderChannel); Serial.print("  ");
-Serial.print("Encoder "); Serial.print(i); Serial.print(": ");
-Serial.println(encoderValue[encoderChannel][i]);
+
+        Serial.print("encoder channel: "); Serial.print(encoderChannel); Serial.print("  ");
+        Serial.print("Encoder "); Serial.print(i); Serial.print(": ");
+        Serial.println(encoderValue[encoderChannel][i]);
 #endif
 
         lastEncoderValue[encoderChannel][i] = encoderValue[encoderChannel][i];
